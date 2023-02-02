@@ -173,6 +173,7 @@ const LoanChart: FC<TableParams> = ({ loanData }) => {
         },
       },
       aspectRatio: 9 / 6,
+      animation: false,
     };
   }, []);
 
