@@ -23,7 +23,8 @@ ChartJS.register(
 );
 
 const LOAN_TOTAL = 322830.96;
-const LOAN_INTEREST = 0.00734169686;
+// const LOAN_INTEREST = 0.00734169686;
+const LOAN_INTEREST = 8.81;
 const LOAN_MONTHS = 284;
 
 // const LOAN_TOTAL = 300000;
@@ -62,7 +63,7 @@ function getMonthlyLoan(
   loanDuration: number,
   loanTotal: number
 ) {
-  return -pmt(loanInterest, loanDuration, loanTotal);
+  return -pmt(loanInterest / 100 / 12, loanDuration, loanTotal);
 }
 
 function getPrincipal(
@@ -71,7 +72,7 @@ function getPrincipal(
   loanDuration: number,
   loanTotal: number
 ) {
-  return -ppmt(loanInterest, month, loanDuration, loanTotal);
+  return -ppmt(loanInterest / 100 / 12, month, loanDuration, loanTotal);
 }
 
 function getLoanData(
@@ -132,7 +133,7 @@ const Form: FC<FormParams> = ({
           />
         </div>
         <div className="input-row">
-          <label>Dobanda credit (lunar)</label>
+          <label>Dobanda anuala (%)</label>
           <input
             type="number"
             value={loanInterest}
@@ -181,7 +182,7 @@ const LoanChart: FC<TableParams> = ({ loanData }) => {
     labels: loanData.payments.map((p) => p.month),
     datasets: [
       {
-        label: "Interest",
+        label: "Dobanda",
         data: loanData.payments.map((p) => p.interest),
         backgroundColor: "rgba(255, 99, 132, 0.5)",
       },
