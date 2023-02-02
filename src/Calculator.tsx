@@ -1,5 +1,26 @@
 import { pmt, ppmt } from "financial";
-import { useState, FC } from "react";
+import { useState, FC, useMemo } from "react";
+
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  ChartOptions,
+} from "chart.js";
+import { Bar } from "react-chartjs-2";
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend
+);
 
 const LOAN_TOTAL = 322830.96;
 const LOAN_INTEREST = 0.00734169686;
@@ -133,6 +154,51 @@ const Form: FC<FormParams> = ({
   );
 };
 
+const LoanChart: FC<TableParams> = ({ loanData }) => {
+  const options = useMemo<ChartOptions<"bar">>(() => {
+    return {
+      responsive: true,
+      scales: {
+        x: {
+          stacked: true,
+        },
+        y: {
+          stacked: true,
+        },
+      },
+      datasets: {
+        bar: {
+          barPercentage: 1,
+          categoryPercentage: 1,
+        },
+      },
+      aspectRatio: 9 / 6,
+    };
+  }, []);
+
+  const data = {
+    labels: loanData.payments.map((p) => p.month),
+    datasets: [
+      {
+        label: "Interest",
+        data: loanData.payments.map((p) => p.interest),
+        backgroundColor: "rgba(255, 99, 132, 0.5)",
+      },
+      {
+        label: "Principal",
+        data: loanData.payments.map((p) => p.principal),
+        backgroundColor: "rgba(53, 162, 235, 0.5)",
+      },
+    ],
+  };
+
+  return (
+    <div className="chart-container">
+      <Bar options={options} data={data} />
+    </div>
+  );
+};
+
 const Table: FC<TableParams> = ({ loanData }) => {
   // console.log(-pmt(LOAN_INTEREST, LOAN_MONTHS, LOAN_TOTAL));
   // console.log(-ppmt(LOAN_INTEREST, 1, LOAN_MONTHS, LOAN_TOTAL));
@@ -184,6 +250,7 @@ export function Calculator() {
         setLoanInterest={setLoanInterest}
         loanData={loanData}
       ></Form>
+      <LoanChart loanData={loanData}></LoanChart>
       <Table loanData={loanData}></Table>
     </>
   );
