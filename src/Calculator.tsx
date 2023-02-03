@@ -22,11 +22,6 @@ ChartJS.register(
   Legend
 );
 
-// const LOAN_TOTAL = 322830.96;
-// // const LOAN_INTEREST = 0.00734169686;
-// const LOAN_INTEREST = 8.81;
-// const LOAN_MONTHS = 284;
-
 const DEFAULT_CONFIG: Config = {
   loanTotal: 322830.96,
   loanInterest: 8.81,
@@ -36,10 +31,6 @@ const DEFAULT_CONFIG: Config = {
   measureDuration: 360,
   monthlyAvailable: 10000,
 };
-
-// const LOAN_TOTAL = 300000;
-// const LOAN_INTEREST = 0.007883333; // DAE 9,92%
-// const LOAN_MONTHS = 360;
 
 interface Config {
   loanTotal: number;
@@ -61,22 +52,22 @@ interface ConfigInputParams {
 interface ConfigFormParams {
   config: Config;
   setConfig: (params: Config) => unknown;
-  loanData: LoanData;
+  data: Data;
 }
 
 interface TableParams {
-  loanData: LoanData;
+  loanData: Data;
 }
 
-interface LoanMonthlyData {
+interface MonthlyData {
   month: number;
-  principal: number;
-  interest: number;
-  rest: number;
+  loanPrincipal: number;
+  loanInterest: number;
+  loanNewTotal: number;
 }
 
-interface LoanData {
-  payments: LoanMonthlyData[];
+interface Data {
+  payments: MonthlyData[];
   total: number;
   monthly: number;
 }
@@ -98,34 +89,40 @@ function getPrincipal(
   return -ppmt(loanInterest / 100 / 12, month, loanDuration, loanTotal);
 }
 
-function getLoanData(
-  loanInterest: number,
-  loanDuration: number,
-  loanTotal: number
-): LoanData {
-  const loanMonthly = getMonthlyLoan(loanInterest, loanDuration, loanTotal);
-  const payments: LoanMonthlyData[] = [];
+function getData(config: Config): Data {
+  const loanMonthly = getMonthlyLoan(
+    config.loanInterest,
+    config.loanDuration,
+    config.loanTotal
+  );
+  const payments: MonthlyData[] = [];
 
-  for (let month = 1; month <= loanDuration; month++) {
+  for (let month = 1; month <= config.loanDuration; month++) {
     const totalBeforePayment =
-      payments.length === 0 ? loanTotal : payments[payments.length - 1].rest;
+      payments.length === 0
+        ? config.loanTotal
+        : payments[payments.length - 1].loanNewTotal;
 
     const principal = getPrincipal(
       1,
-      loanInterest,
-      loanDuration - month + 1,
+      config.loanInterest,
+      config.loanDuration - month + 1,
       totalBeforePayment
     );
 
     payments.push({
       month,
-      principal,
-      interest: loanMonthly - principal,
-      rest: totalBeforePayment - principal,
+      loanPrincipal: principal,
+      loanInterest: loanMonthly - principal,
+      loanNewTotal: totalBeforePayment - principal,
     });
   }
 
-  return { payments, total: loanMonthly * loanDuration, monthly: loanMonthly };
+  return {
+    payments,
+    total: loanMonthly * config.loanDuration,
+    monthly: loanMonthly,
+  };
 }
 
 const ConfigInput = ({
@@ -151,7 +148,7 @@ const ConfigInput = ({
   );
 };
 
-const ConfigForm = ({ config, setConfig, loanData }: ConfigFormParams) => {
+const ConfigForm = ({ config, setConfig, data }: ConfigFormParams) => {
   return (
     <>
       <div className="inline-inputs">
@@ -177,51 +174,49 @@ const ConfigForm = ({ config, setConfig, loanData }: ConfigFormParams) => {
       <div className="inline-inputs">
         <div className="input-row">
           <label>Rata lunara</label>
-          <input type="number" value={loanData.monthly.toFixed(2)} readOnly />
+          <input type="number" value={data.monthly.toFixed(2)} readOnly />
         </div>
         <div className="input-row">
           <label>Total rambursat</label>
-          <input type="number" value={loanData.total.toFixed(2)} readOnly />
+          <input type="number" value={data.total.toFixed(2)} readOnly />
         </div>
       </div>
     </>
   );
 };
 
-const LoanChart = ({ loanData }: TableParams) => {
-  const options = useMemo<ChartOptions<"bar">>(() => {
-    return {
-      responsive: true,
-      scales: {
-        x: {
-          stacked: true,
-        },
-        y: {
-          stacked: true,
-        },
-      },
-      datasets: {
-        bar: {
-          barPercentage: 1,
-          categoryPercentage: 1,
-        },
-      },
-      aspectRatio: 9 / 6,
-      animation: false,
-    };
-  }, []);
+const chartOptions: ChartOptions<"bar"> = {
+  responsive: true,
+  scales: {
+    x: {
+      stacked: true,
+    },
+    y: {
+      stacked: true,
+    },
+  },
+  datasets: {
+    bar: {
+      barPercentage: 1,
+      categoryPercentage: 1,
+    },
+  },
+  aspectRatio: 9 / 6,
+  animation: false,
+};
 
-  const data = {
-    labels: loanData.payments.map((p) => p.month),
+const LoanChart = ({ data }: { data: Data }) => {
+  const chartData = {
+    labels: data.payments.map((p) => p.month),
     datasets: [
       {
         label: "Dobanda",
-        data: loanData.payments.map((p) => p.interest),
+        data: data.payments.map((p) => p.loanInterest),
         backgroundColor: "rgba(255, 99, 132, 0.5)",
       },
       {
         label: "Principal",
-        data: loanData.payments.map((p) => p.principal),
+        data: data.payments.map((p) => p.loanPrincipal),
         backgroundColor: "rgba(53, 162, 235, 0.5)",
       },
     ],
@@ -229,12 +224,12 @@ const LoanChart = ({ loanData }: TableParams) => {
 
   return (
     <div className="chart-container">
-      <Bar options={options} data={data} />
+      <Bar options={chartOptions} data={chartData} />
     </div>
   );
 };
 
-const Table = ({ loanData }: TableParams) => {
+const Table = ({ data }: { data: Data }) => {
   // console.log(-pmt(LOAN_INTEREST, LOAN_MONTHS, LOAN_TOTAL));
   // console.log(-ppmt(LOAN_INTEREST, 1, LOAN_MONTHS, LOAN_TOTAL));
 
@@ -265,21 +260,28 @@ const Table = ({ loanData }: TableParams) => {
           </tr>
         </thead>
         <tbody>
-          {loanData.payments.map(({ month, principal, interest, rest }) => {
-            return (
-              <tr key={month}>
-                <td>{month}</td>
-                <td className="num">{principal.toFixed(2)}</td>
-                <td className="num">{interest.toFixed(2)}</td>
-                <td className="num">0</td>
-                <td className="num border">{rest.toFixed(2)}</td>
-                <td className="num">0</td>
-                <td className="num">0</td>
-                <td className="num border">123456</td>
-                <td className="num">0</td>
-              </tr>
-            );
-          })}
+          {data.payments.map(
+            ({
+              month,
+              loanPrincipal: principal,
+              loanInterest: interest,
+              loanNewTotal: rest,
+            }) => {
+              return (
+                <tr key={month}>
+                  <td>{month}</td>
+                  <td className="num">{principal.toFixed(2)}</td>
+                  <td className="num">{interest.toFixed(2)}</td>
+                  <td className="num">0</td>
+                  <td className="num border">{rest.toFixed(2)}</td>
+                  <td className="num">0</td>
+                  <td className="num">0</td>
+                  <td className="num border">123456</td>
+                  <td className="num">0</td>
+                </tr>
+              );
+            }
+          )}
         </tbody>
       </table>
     </>
@@ -289,21 +291,17 @@ const Table = ({ loanData }: TableParams) => {
 export const Calculator = () => {
   const [config, setConfig] = useState<Config>(DEFAULT_CONFIG);
 
-  const loanData = getLoanData(
-    config.loanInterest,
-    config.loanDuration,
-    config.loanTotal
-  );
+  const data = getData(config);
 
   return (
     <>
       <ConfigForm
         config={config}
         setConfig={setConfig}
-        loanData={loanData}
+        data={data}
       ></ConfigForm>
-      <LoanChart loanData={loanData}></LoanChart>
-      <Table loanData={loanData}></Table>
+      <LoanChart data={data}></LoanChart>
+      <Table data={data}></Table>
     </>
   );
 };
