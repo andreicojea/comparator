@@ -239,6 +239,8 @@ const ConfigInput = ({
 };
 
 const ConfigForm = ({ config, setConfig, data }: ConfigFormParams) => {
+  const loanSavedPercent = (1 - data.totalPaid / data.totalExpected) * 100;
+
   return (
     <>
       <div className="inline-inputs">
@@ -287,7 +289,12 @@ const ConfigForm = ({ config, setConfig, data }: ConfigFormParams) => {
           <input type="number" value={data.totalExpected.toFixed(2)} readOnly />
         </div>
         <div className="input-row">
-          <label>Total cu plati anticipate</label>
+          <label>
+            Total cu plati anticipate
+            {loanSavedPercent > 0 && (
+              <span> (-{loanSavedPercent.toFixed(2)}%)</span>
+            )}
+          </label>
           <input type="number" value={data.totalPaid.toFixed(2)} readOnly />
         </div>
       </div>
