@@ -31,7 +31,8 @@ const DEFAULT_CONFIG: RawConfig = {
   loanDuration: "284",
   investInterest: "8.81",
   preferLoanDuration: "0",
-  measureDuration: "360",
+  // measureDuration: "360",
+  measureDuration: "284",
   monthlyAvailable: "10000",
 };
 
@@ -68,6 +69,7 @@ interface MonthlyData {
   loanNewTotal: number;
   loanNewDuration: number;
   additionalFromPrevious: number;
+  loanSaved: number;
 }
 
 interface Data {
@@ -191,6 +193,7 @@ function getData(config: Config): Data {
       loanNewTotal: loanNewTotal > 0 ? loanNewTotal : 0,
       loanNewDuration,
       additionalFromPrevious: loanAdditional - sum(principals),
+      loanSaved: sum(principals.map((p) => loanMonthly - p)),
     });
   }
 
@@ -343,7 +346,7 @@ const Table = ({ data }: { data: Data }) => {
       <table>
         <thead>
           <tr>
-            <th colSpan={6} className="border">
+            <th colSpan={7} className="border">
               Credit
             </th>
             <th colSpan={3} className="border">
@@ -357,7 +360,8 @@ const Table = ({ data }: { data: Data }) => {
             <th className="num">Dobanda</th>
             <th className="num">Anticipat</th>
             <th className="num">Rest credit</th>
-            <th className="num border">Luni ramase</th>
+            <th className="num">Luni ramase</th>
+            <th className="num border">Dobanda scutita</th>
             <th className="num">Investitie</th>
             <th className="num">Dobanda</th>
             <th className="num border">Valoare curenta</th>
@@ -373,6 +377,7 @@ const Table = ({ data }: { data: Data }) => {
               loanNewTotal,
               loanAdditional,
               loanNewDuration,
+              loanSaved,
             }) => {
               return (
                 <tr key={month}>
@@ -381,7 +386,8 @@ const Table = ({ data }: { data: Data }) => {
                   <td className="num">{loanInterest.toFixed(2)}</td>
                   <td className="num">{loanAdditional.toFixed(2)}</td>
                   <td className="num">{loanNewTotal.toFixed(2)}</td>
-                  <td className="num border">{loanNewDuration}</td>
+                  <td className="num">{loanNewDuration}</td>
+                  <td className="num border">{loanSaved.toFixed(2)}</td>
                   <td className="num">0</td>
                   <td className="num">0</td>
                   <td className="num border">123456</td>
