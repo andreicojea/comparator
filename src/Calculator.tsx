@@ -2,6 +2,7 @@ import { pmt, ppmt } from "financial";
 import { useState } from "react";
 import sum from "lodash/sum";
 import sumBy from "lodash/sumBy";
+import mapValues from "lodash/mapValues";
 
 import {
   Chart as ChartJS,
@@ -24,14 +25,14 @@ ChartJS.register(
   Legend
 );
 
-const DEFAULT_CONFIG: Config = {
-  loanTotal: 322830.96,
-  loanInterest: 8.81,
-  loanDuration: 284,
-  investInterest: 8.81,
-  preferLoanDuration: 0,
-  measureDuration: 360,
-  monthlyAvailable: 10000,
+const DEFAULT_CONFIG: RawConfig = {
+  loanTotal: "322830.96",
+  loanInterest: "8.81",
+  loanDuration: "284",
+  investInterest: "8.81",
+  preferLoanDuration: "0",
+  measureDuration: "360",
+  monthlyAvailable: "10000",
 };
 
 interface Config {
@@ -44,18 +45,18 @@ interface Config {
   monthlyAvailable: number;
 }
 
-// type RawConfig = {[key in keyof Config]: string};
+type RawConfig = { [key in keyof Config]: string };
 
 interface ConfigInputParams {
   label: string;
-  config: Config;
-  param: keyof Config;
-  setConfig: (params: Config) => void;
+  config: RawConfig;
+  param: keyof RawConfig;
+  setConfig: (params: RawConfig) => void;
 }
 
 interface ConfigFormParams {
-  config: Config;
-  setConfig: (params: Config) => unknown;
+  config: RawConfig;
+  setConfig: (params: RawConfig) => unknown;
   data: Data;
 }
 
@@ -148,16 +149,6 @@ function getData(config: Config): Data {
       payments.length === 0
         ? 0
         : payments[payments.length - 1].additionalFromPrevious;
-    // console.log(loanDurationBeforePayment);
-
-    // const principals = getPrincipalsWithAvailable(
-    //   config.monthlyAvailable,
-    //   config.loanInterest,
-    //   loanDurationBeforePayment,
-    //   loanTotalBeforePayment
-    // );
-
-    // const loanPrincipal = principals[0] || 0;
 
     const loanPrincipal =
       loanTotalBeforePayment > 0
@@ -214,6 +205,10 @@ function getData(config: Config): Data {
   };
 }
 
+function parseConfig(rawConfig: RawConfig): Config {
+  return mapValues(rawConfig, (val) => (val ? Number(val) : 0));
+}
+
 const ConfigInput = ({
   label,
   param,
@@ -229,7 +224,7 @@ const ConfigInput = ({
         onChange={(e) =>
           setConfig({
             ...config,
-            [param]: Number(e.target.value),
+            [param]: e.target.value,
           })
         }
       />
@@ -259,13 +254,23 @@ const ConfigForm = ({ config, setConfig, data }: ConfigFormParams) => {
           config={config}
           setConfig={setConfig}
         ></ConfigInput>
+      </div>
+
+      <div className="inline-inputs">
         <ConfigInput
-          label="Durata plati anticipate"
+          label="Suma disponibila lunar"
+          param="monthlyAvailable"
+          config={config}
+          setConfig={setConfig}
+        ></ConfigInput>
+        <ConfigInput
+          label="Numar plati anticipate"
           param="preferLoanDuration"
           config={config}
           setConfig={setConfig}
         ></ConfigInput>
       </div>
+
       <div className="inline-inputs">
         <div className="input-row">
           <label>Rata lunara</label>
@@ -392,9 +397,10 @@ const Table = ({ data }: { data: Data }) => {
 };
 
 export const Calculator = () => {
-  const [config, setConfig] = useState<Config>(DEFAULT_CONFIG);
+  const [config, setConfig] = useState<RawConfig>(DEFAULT_CONFIG);
 
-  const data = getData(config);
+  const parsedConfig = parseConfig(config);
+  const data = getData(parsedConfig);
 
   return (
     <>
