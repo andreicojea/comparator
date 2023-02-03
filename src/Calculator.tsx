@@ -107,20 +107,21 @@ function getLoanData(
   const payments: LoanMonthlyData[] = [];
 
   for (let month = 1; month <= loanDuration; month++) {
-    const principal = getPrincipal(
-      month,
-      loanInterest,
-      loanDuration,
-      loanTotal
-    );
-    const total =
+    const totalBeforePayment =
       payments.length === 0 ? loanTotal : payments[payments.length - 1].rest;
+
+    const principal = getPrincipal(
+      1,
+      loanInterest,
+      loanDuration - month + 1,
+      totalBeforePayment
+    );
 
     payments.push({
       month,
       principal,
       interest: loanMonthly - principal,
-      rest: total - principal,
+      rest: totalBeforePayment - principal,
     });
   }
 
