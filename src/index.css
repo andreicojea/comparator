@@ -11,21 +11,39 @@
   -webkit-text-size-adjust: 100%;
 }
 
-table, th, td {
+table,
+th,
+td {
   border: 1px solid #666;
   border-collapse: collapse;
 }
 
-table {
-  width: 560px
-}
+/* table {
+  width: 560px;
+} */
 
 th {
-  width: 100px;
+  width: 90px;
 }
 
-th, td {
+th,
+td {
   padding: 6px 12px;
+}
+
+th:first-child,
+td:first-child {
+  width: 0;
+}
+
+th.num,
+td.num {
+  text-align: right;
+}
+
+th.border,
+td.border {
+  border-right-width: 3px;
 }
 
 .input-row {
@@ -34,7 +52,7 @@ th, td {
 
 .inline-inputs {
   display: flex;
-  gap: 10px
+  gap: 10px;
 }
 
 label {
@@ -50,5 +68,5 @@ input {
 .chart-container {
   width: 560px;
   position: relative;
-  margin: 20px 0
+  margin: 20px 0;
 }

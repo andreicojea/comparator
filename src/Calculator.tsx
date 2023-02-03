@@ -207,14 +207,28 @@ const Table = ({ loanData }: TableParams) => {
 
   return (
     <>
-      <label>Grafic rambursare</label>
+      <label>Credit vs Fond de investitii</label>
       <table>
         <thead>
           <tr>
+            <th colSpan={5} className="border">
+              Credit
+            </th>
+            <th colSpan={3} className="border">
+              Fond de investitii
+            </th>
+            <th>Averea Fam. Viking</th>
+          </tr>
+          <tr>
             <th>Luna</th>
-            <th>Principal</th>
-            <th>Dobanda</th>
-            <th>Rest de plata</th>
+            <th className="num">Principal</th>
+            <th className="num">Dobanda</th>
+            <th className="num">Anticipat</th>
+            <th className="num border">Rest credit</th>
+            <th className="num">Investitie</th>
+            <th className="num">Dobanda</th>
+            <th className="num border">Valoare curenta</th>
+            <th className="num">Total</th>
           </tr>
         </thead>
         <tbody>
@@ -222,9 +236,14 @@ const Table = ({ loanData }: TableParams) => {
             return (
               <tr key={month}>
                 <td>{month}</td>
-                <td>{principal.toFixed(2)}</td>
-                <td>{interest.toFixed(2)}</td>
-                <td>{rest.toFixed(2)}</td>
+                <td className="num">{principal.toFixed(2)}</td>
+                <td className="num">{interest.toFixed(2)}</td>
+                <td className="num">0</td>
+                <td className="num border">{rest.toFixed(2)}</td>
+                <td className="num">0</td>
+                <td className="num">0</td>
+                <td className="num border">123456</td>
+                <td className="num">0</td>
               </tr>
             );
           })}
