@@ -22,22 +22,45 @@ ChartJS.register(
   Legend
 );
 
-const LOAN_TOTAL = 322830.96;
-// const LOAN_INTEREST = 0.00734169686;
-const LOAN_INTEREST = 8.81;
-const LOAN_MONTHS = 284;
+// const LOAN_TOTAL = 322830.96;
+// // const LOAN_INTEREST = 0.00734169686;
+// const LOAN_INTEREST = 8.81;
+// const LOAN_MONTHS = 284;
+
+const DEFAULT_CONFIG: Config = {
+  loanTotal: 322830.96,
+  loanInterest: 8.81,
+  loanDuration: 284,
+  investInterest: 8.81,
+  preferLoanDuration: 0,
+  measureDuration: 360,
+  monthlyAvailable: 10000,
+};
 
 // const LOAN_TOTAL = 300000;
 // const LOAN_INTEREST = 0.007883333; // DAE 9,92%
 // const LOAN_MONTHS = 360;
 
-interface FormParams {
+interface Config {
   loanTotal: number;
-  setLoanTotal: (val: number) => unknown;
   loanDuration: number;
-  setLoanDuration: (val: number) => unknown;
   loanInterest: number;
-  setLoanInterest: (val: number) => unknown;
+  investInterest: number;
+  preferLoanDuration: number;
+  measureDuration: number;
+  monthlyAvailable: number;
+}
+
+interface ConfigInputParams {
+  label: string;
+  config: Config;
+  param: keyof Config;
+  setConfig: (params: Config) => void;
+}
+
+interface ConfigFormParams {
+  config: Config;
+  setConfig: (params: Config) => unknown;
   loanData: LoanData;
 }
 
@@ -104,42 +127,51 @@ function getLoanData(
   return { payments, total: loanMonthly * loanDuration, monthly: loanMonthly };
 }
 
-const Form = ({
-  loanTotal,
-  setLoanTotal,
-  loanDuration,
-  setLoanDuration,
-  loanInterest,
-  setLoanInterest,
-  loanData,
-}: FormParams) => {
+const ConfigInput = ({
+  label,
+  param,
+  config,
+  setConfig,
+}: ConfigInputParams) => {
+  return (
+    <div className="input-row">
+      <label>{label}</label>
+      <input
+        type="number"
+        value={config[param]}
+        onChange={(e) =>
+          setConfig({
+            ...config,
+            [param]: Number(e.target.value),
+          })
+        }
+      />
+    </div>
+  );
+};
+
+const ConfigForm = ({ config, setConfig, loanData }: ConfigFormParams) => {
   return (
     <>
       <div className="inline-inputs">
-        <div className="input-row">
-          <label>Valoare credit</label>
-          <input
-            type="number"
-            value={loanTotal}
-            onChange={(e) => setLoanTotal(Number(e.target.value))}
-          />
-        </div>
-        <div className="input-row">
-          <label>Durata credit (luni)</label>
-          <input
-            type="number"
-            value={loanDuration}
-            onChange={(e) => setLoanDuration(Number(e.target.value))}
-          />
-        </div>
-        <div className="input-row">
-          <label>Dobanda anuala (%)</label>
-          <input
-            type="number"
-            value={loanInterest}
-            onChange={(e) => setLoanInterest(Number(e.target.value))}
-          />
-        </div>
+        <ConfigInput
+          label="Valoare credit"
+          param="loanTotal"
+          config={config}
+          setConfig={setConfig}
+        ></ConfigInput>
+        <ConfigInput
+          label="Durata credit (luni)"
+          param="loanDuration"
+          config={config}
+          setConfig={setConfig}
+        ></ConfigInput>
+        <ConfigInput
+          label="Dobanda anuala (%)"
+          param="loanInterest"
+          config={config}
+          setConfig={setConfig}
+        ></ConfigInput>
       </div>
       <div className="inline-inputs">
         <div className="input-row">
@@ -254,23 +286,21 @@ const Table = ({ loanData }: TableParams) => {
 };
 
 export const Calculator = () => {
-  const [loanTotal, setLoanTotal] = useState(LOAN_TOTAL);
-  const [loanDuration, setLoanDuration] = useState(LOAN_MONTHS);
-  const [loanInterest, setLoanInterest] = useState(LOAN_INTEREST);
+  const [config, setConfig] = useState<Config>(DEFAULT_CONFIG);
 
-  const loanData = getLoanData(loanInterest, loanDuration, loanTotal);
+  const loanData = getLoanData(
+    config.loanInterest,
+    config.loanDuration,
+    config.loanTotal
+  );
 
   return (
     <>
-      <Form
-        loanTotal={loanTotal}
-        setLoanTotal={setLoanTotal}
-        loanDuration={loanDuration}
-        setLoanDuration={setLoanDuration}
-        loanInterest={loanInterest}
-        setLoanInterest={setLoanInterest}
+      <ConfigForm
+        config={config}
+        setConfig={setConfig}
         loanData={loanData}
-      ></Form>
+      ></ConfigForm>
       <LoanChart loanData={loanData}></LoanChart>
       <Table loanData={loanData}></Table>
     </>
