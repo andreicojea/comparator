@@ -30,10 +30,11 @@ const DEFAULT_CONFIG: RawConfig = {
   loanInterest: "8.81",
   loanDuration: "284",
   investInterest: "8.81",
-  preferLoanDuration: "0",
+  preferLoanDuration: "1",
   // measureDuration: "360",
   measureDuration: "284",
   monthlyAvailable: "10000",
+  // monthlyAvailable: `3051.36`,
 };
 
 interface Config {
@@ -165,17 +166,19 @@ function getData(config: Config): Data {
     const loanInterest =
       loanTotalBeforePayment > 0 ? loanMonthly - loanPrincipal : 0;
 
-    const loanAdditional =
+    const loanAdditionalAvailable =
       month <= config.preferLoanDuration && loanTotalBeforePayment > 0
         ? config.monthlyAvailable - loanMonthly + additionalFromPrevious
         : 0;
 
     const principals = getPrincipalsWithAvailable(
-      loanAdditional,
+      loanAdditionalAvailable,
       config.loanInterest,
       loanDurationBeforePayment - 1,
       loanTotalBeforePayment - loanPrincipal
     );
+
+    const loanAdditionalUsed = sum(principals);
 
     const loanNewTotal =
       loanTotalBeforePayment - loanPrincipal - sum(principals);
@@ -189,10 +192,10 @@ function getData(config: Config): Data {
       month,
       loanPrincipal,
       loanInterest,
-      loanAdditional,
+      loanAdditional: loanAdditionalUsed,
       loanNewTotal: loanNewTotal > 0 ? loanNewTotal : 0,
       loanNewDuration,
-      additionalFromPrevious: loanAdditional - sum(principals),
+      additionalFromPrevious: loanAdditionalAvailable - loanAdditionalUsed,
       loanSaved: sum(principals.map((p) => loanMonthly - p)),
     });
   }
