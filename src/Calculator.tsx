@@ -1,5 +1,7 @@
 import { pmt, ppmt } from "financial";
-import { useState, useMemo } from "react";
+import { useState } from "react";
+import sum from "lodash/sum";
+import sumBy from "lodash/sumBy";
 
 import {
   Chart as ChartJS,
@@ -42,6 +44,8 @@ interface Config {
   monthlyAvailable: number;
 }
 
+// type RawConfig = {[key in keyof Config]: string};
+
 interface ConfigInputParams {
   label: string;
   config: Config;
@@ -55,20 +59,20 @@ interface ConfigFormParams {
   data: Data;
 }
 
-interface TableParams {
-  loanData: Data;
-}
-
 interface MonthlyData {
   month: number;
   loanPrincipal: number;
   loanInterest: number;
+  loanAdditional: number;
   loanNewTotal: number;
+  loanNewDuration: number;
+  additionalFromPrevious: number;
 }
 
 interface Data {
   payments: MonthlyData[];
-  total: number;
+  totalExpected: number;
+  totalPaid: number;
   monthly: number;
 }
 
@@ -89,6 +93,38 @@ function getPrincipal(
   return -ppmt(loanInterest / 100 / 12, month, loanDuration, loanTotal);
 }
 
+function getPrincipalsWithAvailable(
+  available: number,
+  loanInterest: number,
+  loanDuration: number,
+  loanTotal: number
+) {
+  if (loanTotal <= 0) {
+    return [];
+  }
+
+  let principals: number[] = [];
+  let done = false;
+  while (sum(principals) < available && !done) {
+    const newPrincipal = getPrincipal(
+      principals.length + 1,
+      loanInterest,
+      loanDuration,
+      loanTotal
+    );
+    if (newPrincipal > 0) {
+      principals.push(newPrincipal);
+    } else {
+      done = true;
+    }
+  }
+  if (sum(principals) > available) {
+    principals.pop();
+  }
+
+  return principals;
+}
+
 function getData(config: Config): Data {
   const loanMonthly = getMonthlyLoan(
     config.loanInterest,
@@ -97,30 +133,83 @@ function getData(config: Config): Data {
   );
   const payments: MonthlyData[] = [];
 
-  for (let month = 1; month <= config.loanDuration; month++) {
-    const totalBeforePayment =
+  for (let month = 1; month <= config.measureDuration; month++) {
+    const loanTotalBeforePayment =
       payments.length === 0
         ? config.loanTotal
         : payments[payments.length - 1].loanNewTotal;
 
-    const principal = getPrincipal(
-      1,
+    const loanDurationBeforePayment =
+      payments.length === 0
+        ? config.loanDuration
+        : payments[payments.length - 1].loanNewDuration;
+
+    const additionalFromPrevious =
+      payments.length === 0
+        ? 0
+        : payments[payments.length - 1].additionalFromPrevious;
+    // console.log(loanDurationBeforePayment);
+
+    // const principals = getPrincipalsWithAvailable(
+    //   config.monthlyAvailable,
+    //   config.loanInterest,
+    //   loanDurationBeforePayment,
+    //   loanTotalBeforePayment
+    // );
+
+    // const loanPrincipal = principals[0] || 0;
+
+    const loanPrincipal =
+      loanTotalBeforePayment > 0
+        ? getPrincipal(
+            1,
+            config.loanInterest,
+            loanDurationBeforePayment,
+            loanTotalBeforePayment
+          )
+        : 0;
+
+    const loanInterest =
+      loanTotalBeforePayment > 0 ? loanMonthly - loanPrincipal : 0;
+
+    const loanAdditional =
+      month <= config.preferLoanDuration && loanTotalBeforePayment > 0
+        ? config.monthlyAvailable - loanMonthly + additionalFromPrevious
+        : 0;
+
+    const principals = getPrincipalsWithAvailable(
+      loanAdditional,
       config.loanInterest,
-      config.loanDuration - month + 1,
-      totalBeforePayment
+      loanDurationBeforePayment - 1,
+      loanTotalBeforePayment - loanPrincipal
+    );
+
+    const loanNewTotal =
+      loanTotalBeforePayment - loanPrincipal - sum(principals);
+
+    const loanNewDuration = Math.max(
+      loanDurationBeforePayment - 1 - principals.length,
+      0
     );
 
     payments.push({
       month,
-      loanPrincipal: principal,
-      loanInterest: loanMonthly - principal,
-      loanNewTotal: totalBeforePayment - principal,
+      loanPrincipal,
+      loanInterest,
+      loanAdditional,
+      loanNewTotal: loanNewTotal > 0 ? loanNewTotal : 0,
+      loanNewDuration,
+      additionalFromPrevious: loanAdditional - sum(principals),
     });
   }
 
   return {
     payments,
-    total: loanMonthly * config.loanDuration,
+    totalExpected: loanMonthly * config.loanDuration,
+    totalPaid: sumBy(
+      payments,
+      (p) => p.loanPrincipal + p.loanInterest + p.loanAdditional
+    ),
     monthly: loanMonthly,
   };
 }
@@ -170,6 +259,12 @@ const ConfigForm = ({ config, setConfig, data }: ConfigFormParams) => {
           config={config}
           setConfig={setConfig}
         ></ConfigInput>
+        <ConfigInput
+          label="Durata plati anticipate"
+          param="preferLoanDuration"
+          config={config}
+          setConfig={setConfig}
+        ></ConfigInput>
       </div>
       <div className="inline-inputs">
         <div className="input-row">
@@ -177,8 +272,12 @@ const ConfigForm = ({ config, setConfig, data }: ConfigFormParams) => {
           <input type="number" value={data.monthly.toFixed(2)} readOnly />
         </div>
         <div className="input-row">
-          <label>Total rambursat</label>
-          <input type="number" value={data.total.toFixed(2)} readOnly />
+          <label>Total fara plati anticipate</label>
+          <input type="number" value={data.totalExpected.toFixed(2)} readOnly />
+        </div>
+        <div className="input-row">
+          <label>Total cu plati anticipate</label>
+          <input type="number" value={data.totalPaid.toFixed(2)} readOnly />
         </div>
       </div>
     </>
@@ -239,7 +338,7 @@ const Table = ({ data }: { data: Data }) => {
       <table>
         <thead>
           <tr>
-            <th colSpan={5} className="border">
+            <th colSpan={6} className="border">
               Credit
             </th>
             <th colSpan={3} className="border">
@@ -252,7 +351,8 @@ const Table = ({ data }: { data: Data }) => {
             <th className="num">Principal</th>
             <th className="num">Dobanda</th>
             <th className="num">Anticipat</th>
-            <th className="num border">Rest credit</th>
+            <th className="num">Rest credit</th>
+            <th className="num border">Luni ramase</th>
             <th className="num">Investitie</th>
             <th className="num">Dobanda</th>
             <th className="num border">Valoare curenta</th>
@@ -263,17 +363,20 @@ const Table = ({ data }: { data: Data }) => {
           {data.payments.map(
             ({
               month,
-              loanPrincipal: principal,
-              loanInterest: interest,
-              loanNewTotal: rest,
+              loanPrincipal,
+              loanInterest,
+              loanNewTotal,
+              loanAdditional,
+              loanNewDuration,
             }) => {
               return (
                 <tr key={month}>
                   <td>{month}</td>
-                  <td className="num">{principal.toFixed(2)}</td>
-                  <td className="num">{interest.toFixed(2)}</td>
-                  <td className="num">0</td>
-                  <td className="num border">{rest.toFixed(2)}</td>
+                  <td className="num">{loanPrincipal.toFixed(2)}</td>
+                  <td className="num">{loanInterest.toFixed(2)}</td>
+                  <td className="num">{loanAdditional.toFixed(2)}</td>
+                  <td className="num">{loanNewTotal.toFixed(2)}</td>
+                  <td className="num border">{loanNewDuration}</td>
                   <td className="num">0</td>
                   <td className="num">0</td>
                   <td className="num border">123456</td>
