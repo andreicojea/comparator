@@ -1,5 +1,5 @@
 import { pmt, ppmt } from "financial";
-import { useState, FC, useMemo } from "react";
+import { useState, useMemo } from "react";
 
 import {
   Chart as ChartJS,
@@ -104,7 +104,7 @@ function getLoanData(
   return { payments, total: loanMonthly * loanDuration, monthly: loanMonthly };
 }
 
-const Form: FC<FormParams> = ({
+const Form = ({
   loanTotal,
   setLoanTotal,
   loanDuration,
@@ -112,7 +112,7 @@ const Form: FC<FormParams> = ({
   loanInterest,
   setLoanInterest,
   loanData,
-}) => {
+}: FormParams) => {
   return (
     <>
       <div className="inline-inputs">
@@ -155,7 +155,7 @@ const Form: FC<FormParams> = ({
   );
 };
 
-const LoanChart: FC<TableParams> = ({ loanData }) => {
+const LoanChart = ({ loanData }: TableParams) => {
   const options = useMemo<ChartOptions<"bar">>(() => {
     return {
       responsive: true,
@@ -201,7 +201,7 @@ const LoanChart: FC<TableParams> = ({ loanData }) => {
   );
 };
 
-const Table: FC<TableParams> = ({ loanData }) => {
+const Table = ({ loanData }: TableParams) => {
   // console.log(-pmt(LOAN_INTEREST, LOAN_MONTHS, LOAN_TOTAL));
   // console.log(-ppmt(LOAN_INTEREST, 1, LOAN_MONTHS, LOAN_TOTAL));
 
@@ -234,7 +234,7 @@ const Table: FC<TableParams> = ({ loanData }) => {
   );
 };
 
-export function Calculator() {
+export const Calculator = () => {
   const [loanTotal, setLoanTotal] = useState(LOAN_TOTAL);
   const [loanDuration, setLoanDuration] = useState(LOAN_MONTHS);
   const [loanInterest, setLoanInterest] = useState(LOAN_INTEREST);
@@ -256,4 +256,4 @@ export function Calculator() {
       <Table loanData={loanData}></Table>
     </>
   );
-}
+};
