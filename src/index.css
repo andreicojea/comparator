@@ -62,11 +62,24 @@ label {
 
 input {
   font-size: 16px;
-  padding: 6px 5px;
+  padding: 6px;
+  border: 1px solid #999;
+  border-radius: 3px;
 }
 
 .chart-container {
   width: 560px;
   position: relative;
   margin: 20px 0;
+}
+
+.result label {
+  font-weight: bold;
+  color: #0369a1;
+}
+
+.result input {
+  color: #0369a1;
+  border-color: #0369a1;
+  background: #e0f2fe;
 }

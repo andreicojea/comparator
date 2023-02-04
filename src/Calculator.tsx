@@ -64,6 +64,7 @@ interface ConfigFormParams {
 
 interface MonthlyData {
   month: number;
+  availableTotal: number;
   loanPrincipal: number;
   loanInterest: number;
   loanAdditional: number;
@@ -71,6 +72,9 @@ interface MonthlyData {
   loanNewDuration: number;
   additionalUnused: number;
   loanSaved: number;
+  investAdd: number;
+  investInterest: number;
+  investNewTotal: number;
 }
 
 interface Data {
@@ -78,6 +82,7 @@ interface Data {
   totalLoanExpected: number;
   totalLoanPaid: number;
   loanMonthly: number;
+  investResult: number;
 }
 
 function getMonthlyLoan(
@@ -148,22 +153,29 @@ function getData(config: Config): Data {
         ? config.loanDuration
         : payments[payments.length - 1].loanNewDuration;
 
+    const investBeforePayment =
+      payments.length === 0 ? 0 : payments[payments.length - 1].investNewTotal;
+
     const additionalFromPrevious =
       payments.length === 0
         ? 0
         : payments[payments.length - 1].additionalUnused;
 
-    const totalAvailable = config.monthlyAvailable + additionalFromPrevious;
+    const availableTotal = config.monthlyAvailable + additionalFromPrevious;
 
     const current: MonthlyData = {
       month,
+      availableTotal,
       loanPrincipal: 0,
       loanInterest: 0,
       loanAdditional: 0,
       loanNewTotal: 0,
       loanNewDuration: 0,
-      additionalUnused: 0,
+      additionalUnused: availableTotal,
       loanSaved: 0,
+      investAdd: 0,
+      investInterest: 0,
+      investNewTotal: 0,
     };
 
     if (loanTotalBeforePayment > 0) {
@@ -179,7 +191,7 @@ function getData(config: Config): Data {
       const principals =
         month <= config.preferLoanDuration
           ? getPrincipalsWithAvailable(
-              totalAvailable - loanMonthly,
+              availableTotal - loanMonthly,
               config.loanInterest,
               loanDurationBeforePayment - 1,
               loanTotalBeforePayment - current.loanPrincipal
@@ -188,7 +200,7 @@ function getData(config: Config): Data {
 
       current.loanAdditional = sum(principals);
       current.additionalUnused =
-        totalAvailable - loanMonthly - current.loanAdditional;
+        availableTotal - loanMonthly - current.loanAdditional;
       current.loanSaved = sum(principals.map((p) => loanMonthly - p));
 
       current.loanNewTotal = Math.max(
@@ -202,6 +214,15 @@ function getData(config: Config): Data {
       );
     }
 
+    if (current.loanNewDuration === 0 || month > config.preferLoanDuration) {
+      current.investAdd = current.additionalUnused;
+      current.additionalUnused = 0;
+    }
+    current.investInterest =
+      (config.investInterest / 100 / 12) * investBeforePayment;
+    current.investNewTotal =
+      investBeforePayment + current.investAdd + current.investInterest;
+
     payments.push(current);
   }
 
@@ -213,11 +234,17 @@ function getData(config: Config): Data {
       (p) => p.loanPrincipal + p.loanInterest + p.loanAdditional
     ),
     loanMonthly,
+    investResult: payments[payments.length - 1].investNewTotal,
   };
 }
 
 function parseConfig(rawConfig: RawConfig): Config {
-  return mapValues(rawConfig, (val) => (val ? Number(val) : 0));
+  const config = mapValues(rawConfig, (val) => (val ? Number(val) : 0));
+  config.measureDuration = Math.max(
+    config.loanDuration,
+    config.measureDuration
+  );
+  return config;
 }
 
 const ConfigInput = ({
@@ -263,8 +290,14 @@ const ConfigForm = ({ config, setConfig, data }: ConfigFormParams) => {
           setConfig={setConfig}
         ></ConfigInput>
         <ConfigInput
-          label="Dobanda anuala (%)"
+          label="Dobanda anuala credit (%)"
           param="loanInterest"
+          config={config}
+          setConfig={setConfig}
+        ></ConfigInput>
+        <ConfigInput
+          label="Dobanda anuala investitie (%)"
+          param="investInterest"
           config={config}
           setConfig={setConfig}
         ></ConfigInput>
@@ -278,6 +311,12 @@ const ConfigForm = ({ config, setConfig, data }: ConfigFormParams) => {
           setConfig={setConfig}
         ></ConfigInput>
         <ConfigInput
+          label="Durata totala"
+          param="measureDuration"
+          config={config}
+          setConfig={setConfig}
+        ></ConfigInput>
+        <ConfigInput
           label="Numar plati anticipate"
           param="preferLoanDuration"
           config={config}
@@ -287,7 +326,7 @@ const ConfigForm = ({ config, setConfig, data }: ConfigFormParams) => {
 
       <div className="inline-inputs">
         <div className="input-row">
-          <label>Rata lunara</label>
+          <label>Rata lunara credit</label>
           <input type="number" value={data.loanMonthly.toFixed(2)} readOnly />
         </div>
         <div className="input-row">
@@ -306,6 +345,10 @@ const ConfigForm = ({ config, setConfig, data }: ConfigFormParams) => {
             )}
           </label>
           <input type="number" value={data.totalLoanPaid.toFixed(2)} readOnly />
+        </div>
+        <div className="input-row result">
+          <label>Suma disponibila la final</label>
+          <input type="number" value={data.investResult.toFixed(2)} readOnly />
         </div>
       </div>
     </>
@@ -357,25 +400,21 @@ const LoanChart = ({ data }: { data: Data }) => {
 };
 
 const Table = ({ data }: { data: Data }) => {
-  // console.log(-pmt(LOAN_INTEREST, LOAN_MONTHS, LOAN_TOTAL));
-  // console.log(-ppmt(LOAN_INTEREST, 1, LOAN_MONTHS, LOAN_TOTAL));
-
   return (
     <>
       <label>Credit vs Fond de investitii</label>
       <table>
         <thead>
           <tr>
-            <th colSpan={7} className="border">
+            <th colSpan={2} className="border"></th>
+            <th colSpan={6} className="border">
               Credit
             </th>
-            <th colSpan={3} className="border">
-              Fond de investitii
-            </th>
-            <th>Averea Fam. Viking</th>
+            <th colSpan={3}>Fond de investitii</th>
           </tr>
           <tr>
             <th>Luna</th>
+            <th className="border">Suma</th>
             <th className="num">Principal</th>
             <th className="num">Dobanda</th>
             <th className="num">Anticipat</th>
@@ -384,38 +423,27 @@ const Table = ({ data }: { data: Data }) => {
             <th className="num border">Dobanda scutita</th>
             <th className="num">Investitie</th>
             <th className="num">Dobanda</th>
-            <th className="num border">Valoare curenta</th>
-            <th className="num">Total</th>
+            <th className="num">Valoare curenta</th>
           </tr>
         </thead>
         <tbody>
-          {data.monthlyData.map(
-            ({
-              month,
-              loanPrincipal,
-              loanInterest,
-              loanNewTotal,
-              loanAdditional,
-              loanNewDuration,
-              loanSaved,
-            }) => {
-              return (
-                <tr key={month}>
-                  <td>{month}</td>
-                  <td className="num">{loanPrincipal.toFixed(2)}</td>
-                  <td className="num">{loanInterest.toFixed(2)}</td>
-                  <td className="num">{loanAdditional.toFixed(2)}</td>
-                  <td className="num">{loanNewTotal.toFixed(2)}</td>
-                  <td className="num">{loanNewDuration}</td>
-                  <td className="num border">{loanSaved.toFixed(2)}</td>
-                  <td className="num">0</td>
-                  <td className="num">0</td>
-                  <td className="num border">123456</td>
-                  <td className="num">0</td>
-                </tr>
-              );
-            }
-          )}
+          {data.monthlyData.map((current) => {
+            return (
+              <tr key={current.month}>
+                <td>{current.month}</td>
+                <td className="border">{current.availableTotal.toFixed(2)}</td>
+                <td className="num">{current.loanPrincipal.toFixed(2)}</td>
+                <td className="num">{current.loanInterest.toFixed(2)}</td>
+                <td className="num">{current.loanAdditional.toFixed(2)}</td>
+                <td className="num">{current.loanNewTotal.toFixed(2)}</td>
+                <td className="num">{current.loanNewDuration}</td>
+                <td className="num border">{current.loanSaved.toFixed(2)}</td>
+                <td className="num">{current.investAdd.toFixed(2)}</td>
+                <td className="num">{current.investInterest.toFixed(2)}</td>
+                <td className="num">{current.investNewTotal.toFixed(2)}</td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </>
