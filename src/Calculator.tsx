@@ -30,7 +30,7 @@ const DEFAULT_CONFIG: RawConfig = {
   loanInterest: "8.81",
   loanDuration: "284",
   investInterest: "8.81",
-  preferLoanDuration: "1",
+  preferLoanDuration: "0",
   // measureDuration: "360",
   measureDuration: "284",
   monthlyAvailable: "10000",
