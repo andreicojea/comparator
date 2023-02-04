@@ -83,3 +83,14 @@ input {
   border-color: #0369a1;
   background: #e0f2fe;
 }
+
+.max label {
+  font-weight: bold;
+  color: #333;
+}
+
+.max input {
+  color: #333;
+  border-color: #333;
+  background: #eee;
+}

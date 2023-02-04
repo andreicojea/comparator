@@ -1,5 +1,5 @@
-import { pmt, ppmt } from "financial";
-import { useState } from "react";
+import { fv, pmt, ppmt } from "financial";
+import { useMemo, useState } from "react";
 import sum from "lodash/sum";
 import sumBy from "lodash/sumBy";
 import mapValues from "lodash/mapValues";
@@ -32,7 +32,7 @@ const DEFAULT_CONFIG: RawConfig = {
   investInterest: "8.81",
   preferLoanDuration: "0",
   // measureDuration: "360",
-  measureDuration: "284",
+  measureDuration: "",
   monthlyAvailable: "10000",
   // monthlyAvailable: `3051.36`,
 };
@@ -51,6 +51,7 @@ type RawConfig = { [key in keyof Config]: string };
 
 interface ConfigInputParams {
   label: string;
+  placeholder?: string;
   config: RawConfig;
   param: keyof RawConfig;
   setConfig: (params: RawConfig) => void;
@@ -83,6 +84,7 @@ interface Data {
   totalLoanPaid: number;
   loanMonthly: number;
   investResult: number;
+  investMax: number;
 }
 
 function getMonthlyLoan(
@@ -132,6 +134,20 @@ function getPrincipalsWithAvailable(
   }
 
   return principals;
+}
+
+function getInvestMax(config: Config) {
+  let val = 0;
+  const interest = config.investInterest / 100 / 12;
+  const monthlyLoan = getMonthlyLoan(
+    config.loanInterest,
+    config.loanDuration,
+    config.loanTotal
+  );
+  for (let month = 1; month <= config.measureDuration; month++) {
+    val = val + interest * val + config.monthlyAvailable - monthlyLoan;
+  }
+  return val;
 }
 
 function getData(config: Config): Data {
@@ -235,6 +251,7 @@ function getData(config: Config): Data {
     ),
     loanMonthly,
     investResult: payments[payments.length - 1].investNewTotal,
+    investMax: getInvestMax(config),
   };
 }
 
@@ -249,6 +266,7 @@ function parseConfig(rawConfig: RawConfig): Config {
 
 const ConfigInput = ({
   label,
+  placeholder,
   param,
   config,
   setConfig,
@@ -258,6 +276,7 @@ const ConfigInput = ({
       <label>{label}</label>
       <input
         type="number"
+        placeholder={placeholder}
         value={config[param]}
         onChange={(e) =>
           setConfig({
@@ -273,6 +292,8 @@ const ConfigInput = ({
 const ConfigForm = ({ config, setConfig, data }: ConfigFormParams) => {
   const loanSavedPercent =
     (1 - data.totalLoanPaid / data.totalLoanExpected) * 100;
+
+  const investmentPercent = (1 - data.investResult / data.investMax) * 100;
 
   return (
     <>
@@ -312,6 +333,7 @@ const ConfigForm = ({ config, setConfig, data }: ConfigFormParams) => {
         ></ConfigInput>
         <ConfigInput
           label="Durata totala"
+          placeholder={config.loanDuration}
           param="measureDuration"
           config={config}
           setConfig={setConfig}
@@ -341,13 +363,22 @@ const ConfigForm = ({ config, setConfig, data }: ConfigFormParams) => {
           <label>
             Total cu plati anticipate
             {loanSavedPercent > 0 && (
-              <span> (-{loanSavedPercent.toFixed(2)}%)</span>
+              <span> ({-loanSavedPercent.toFixed(2)}%)</span>
             )}
           </label>
           <input type="number" value={data.totalLoanPaid.toFixed(2)} readOnly />
         </div>
+        <div className="input-row max">
+          <label>Rezultat fara plati anticipate</label>
+          <input type="number" value={data.investMax.toFixed(2)} readOnly />
+        </div>
         <div className="input-row result">
-          <label>Suma disponibila la final</label>
+          <label>
+            Rezultat cu plati anticipate
+            {(investmentPercent > 0.01 || investmentPercent < -0.01) && (
+              <span> ({-investmentPercent.toFixed(2)}%)</span>
+            )}
+          </label>
           <input type="number" value={data.investResult.toFixed(2)} readOnly />
         </div>
       </div>
@@ -355,27 +386,30 @@ const ConfigForm = ({ config, setConfig, data }: ConfigFormParams) => {
   );
 };
 
-const chartOptions: ChartOptions<"bar"> = {
-  responsive: true,
-  scales: {
-    x: {
-      stacked: true,
-    },
-    y: {
-      stacked: true,
-    },
-  },
-  datasets: {
-    bar: {
-      barPercentage: 1,
-      categoryPercentage: 1,
-    },
-  },
-  aspectRatio: 9 / 6,
-  animation: false,
-};
+const LoanChart = ({ data, config }: { data: Data; config: Config }) => {
+  const chartOptions = useMemo<ChartOptions<"bar">>(() => {
+    return {
+      responsive: true,
+      scales: {
+        x: {
+          stacked: true,
+          max: config.loanDuration,
+        },
+        y: {
+          stacked: true,
+        },
+      },
+      datasets: {
+        bar: {
+          barPercentage: 1,
+          categoryPercentage: 1,
+        },
+      },
+      aspectRatio: 9 / 6,
+      animation: false,
+    };
+  }, [config.loanDuration]);
 
-const LoanChart = ({ data }: { data: Data }) => {
   const chartData = {
     labels: data.monthlyData.map((p) => p.month),
     datasets: [
@@ -451,19 +485,19 @@ const Table = ({ data }: { data: Data }) => {
 };
 
 export const Calculator = () => {
-  const [config, setConfig] = useState<RawConfig>(DEFAULT_CONFIG);
+  const [rawConfig, setRawConfig] = useState<RawConfig>(DEFAULT_CONFIG);
 
-  const parsedConfig = parseConfig(config);
-  const data = getData(parsedConfig);
+  const config = parseConfig(rawConfig);
+  const data = getData(config);
 
   return (
     <>
       <ConfigForm
-        config={config}
-        setConfig={setConfig}
+        config={rawConfig}
+        setConfig={setRawConfig}
         data={data}
       ></ConfigForm>
-      <LoanChart data={data}></LoanChart>
+      <LoanChart config={config} data={data}></LoanChart>
       <Table data={data}></Table>
     </>
   );
