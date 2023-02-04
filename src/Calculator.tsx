@@ -278,6 +278,7 @@ const ConfigInput = ({
         type="number"
         placeholder={placeholder}
         value={config[param]}
+        min={0}
         onChange={(e) =>
           setConfig({
             ...config,
@@ -291,9 +292,10 @@ const ConfigInput = ({
 
 const ConfigForm = ({ config, setConfig, data }: ConfigFormParams) => {
   const loanSavedPercent =
-    (1 - data.totalLoanPaid / data.totalLoanExpected) * 100;
+    -(1 - data.totalLoanPaid / data.totalLoanExpected) * 100;
 
-  const investmentPercent = (1 - data.investResult / data.investMax) * 100;
+  const investmentPercent = -(1 - data.investResult / data.investMax) * 100;
+  const investmentPercentSign = investmentPercent > 0 ? "+" : "";
 
   return (
     <>
@@ -362,8 +364,8 @@ const ConfigForm = ({ config, setConfig, data }: ConfigFormParams) => {
         <div className="input-row">
           <label>
             Total cu plati anticipate
-            {loanSavedPercent > 0 && (
-              <span> ({-loanSavedPercent.toFixed(2)}%)</span>
+            {loanSavedPercent < 0 && (
+              <span> ({loanSavedPercent.toFixed(2)}%)</span>
             )}
           </label>
           <input type="number" value={data.totalLoanPaid.toFixed(2)} readOnly />
@@ -376,7 +378,11 @@ const ConfigForm = ({ config, setConfig, data }: ConfigFormParams) => {
           <label>
             Rezultat cu plati anticipate
             {(investmentPercent > 0.01 || investmentPercent < -0.01) && (
-              <span> ({-investmentPercent.toFixed(2)}%)</span>
+              <span>
+                {" "}
+                ({investmentPercentSign}
+                {investmentPercent.toFixed(2)}%)
+              </span>
             )}
           </label>
           <input type="number" value={data.investResult.toFixed(2)} readOnly />
