@@ -69,15 +69,15 @@ interface MonthlyData {
   loanAdditional: number;
   loanNewTotal: number;
   loanNewDuration: number;
-  additionalFromPrevious: number;
+  additionalUnused: number;
   loanSaved: number;
 }
 
 interface Data {
-  payments: MonthlyData[];
-  totalExpected: number;
-  totalPaid: number;
-  monthly: number;
+  monthlyData: MonthlyData[];
+  totalLoanExpected: number;
+  totalLoanPaid: number;
+  loanMonthly: number;
 }
 
 function getMonthlyLoan(
@@ -151,63 +151,68 @@ function getData(config: Config): Data {
     const additionalFromPrevious =
       payments.length === 0
         ? 0
-        : payments[payments.length - 1].additionalFromPrevious;
+        : payments[payments.length - 1].additionalUnused;
 
-    const loanPrincipal =
-      loanTotalBeforePayment > 0
-        ? getPrincipal(
-            1,
-            config.loanInterest,
-            loanDurationBeforePayment,
-            loanTotalBeforePayment
-          )
-        : 0;
+    const totalAvailable = config.monthlyAvailable + additionalFromPrevious;
 
-    const loanInterest =
-      loanTotalBeforePayment > 0 ? loanMonthly - loanPrincipal : 0;
-
-    const loanAdditionalAvailable =
-      month <= config.preferLoanDuration && loanTotalBeforePayment > 0
-        ? config.monthlyAvailable - loanMonthly + additionalFromPrevious
-        : 0;
-
-    const principals = getPrincipalsWithAvailable(
-      loanAdditionalAvailable,
-      config.loanInterest,
-      loanDurationBeforePayment - 1,
-      loanTotalBeforePayment - loanPrincipal
-    );
-
-    const loanAdditionalUsed = sum(principals);
-
-    const loanNewTotal =
-      loanTotalBeforePayment - loanPrincipal - sum(principals);
-
-    const loanNewDuration = Math.max(
-      loanDurationBeforePayment - 1 - principals.length,
-      0
-    );
-
-    payments.push({
+    const current: MonthlyData = {
       month,
-      loanPrincipal,
-      loanInterest,
-      loanAdditional: loanAdditionalUsed,
-      loanNewTotal: loanNewTotal > 0 ? loanNewTotal : 0,
-      loanNewDuration,
-      additionalFromPrevious: loanAdditionalAvailable - loanAdditionalUsed,
-      loanSaved: sum(principals.map((p) => loanMonthly - p)),
-    });
+      loanPrincipal: 0,
+      loanInterest: 0,
+      loanAdditional: 0,
+      loanNewTotal: 0,
+      loanNewDuration: 0,
+      additionalUnused: 0,
+      loanSaved: 0,
+    };
+
+    if (loanTotalBeforePayment > 0) {
+      current.loanPrincipal = getPrincipal(
+        1,
+        config.loanInterest,
+        loanDurationBeforePayment,
+        loanTotalBeforePayment
+      );
+
+      current.loanInterest = loanMonthly - current.loanPrincipal;
+
+      const principals =
+        month <= config.preferLoanDuration
+          ? getPrincipalsWithAvailable(
+              totalAvailable - loanMonthly,
+              config.loanInterest,
+              loanDurationBeforePayment - 1,
+              loanTotalBeforePayment - current.loanPrincipal
+            )
+          : [];
+
+      current.loanAdditional = sum(principals);
+      current.additionalUnused =
+        totalAvailable - loanMonthly - current.loanAdditional;
+      current.loanSaved = sum(principals.map((p) => loanMonthly - p));
+
+      current.loanNewTotal = Math.max(
+        loanTotalBeforePayment - current.loanPrincipal - current.loanAdditional,
+        0
+      );
+
+      current.loanNewDuration = Math.max(
+        loanDurationBeforePayment - 1 - principals.length,
+        0
+      );
+    }
+
+    payments.push(current);
   }
 
   return {
-    payments,
-    totalExpected: loanMonthly * config.loanDuration,
-    totalPaid: sumBy(
+    monthlyData: payments,
+    totalLoanExpected: loanMonthly * config.loanDuration,
+    totalLoanPaid: sumBy(
       payments,
       (p) => p.loanPrincipal + p.loanInterest + p.loanAdditional
     ),
-    monthly: loanMonthly,
+    loanMonthly,
   };
 }
 
@@ -239,7 +244,8 @@ const ConfigInput = ({
 };
 
 const ConfigForm = ({ config, setConfig, data }: ConfigFormParams) => {
-  const loanSavedPercent = (1 - data.totalPaid / data.totalExpected) * 100;
+  const loanSavedPercent =
+    (1 - data.totalLoanPaid / data.totalLoanExpected) * 100;
 
   return (
     <>
@@ -282,11 +288,15 @@ const ConfigForm = ({ config, setConfig, data }: ConfigFormParams) => {
       <div className="inline-inputs">
         <div className="input-row">
           <label>Rata lunara</label>
-          <input type="number" value={data.monthly.toFixed(2)} readOnly />
+          <input type="number" value={data.loanMonthly.toFixed(2)} readOnly />
         </div>
         <div className="input-row">
           <label>Total fara plati anticipate</label>
-          <input type="number" value={data.totalExpected.toFixed(2)} readOnly />
+          <input
+            type="number"
+            value={data.totalLoanExpected.toFixed(2)}
+            readOnly
+          />
         </div>
         <div className="input-row">
           <label>
@@ -295,7 +305,7 @@ const ConfigForm = ({ config, setConfig, data }: ConfigFormParams) => {
               <span> (-{loanSavedPercent.toFixed(2)}%)</span>
             )}
           </label>
-          <input type="number" value={data.totalPaid.toFixed(2)} readOnly />
+          <input type="number" value={data.totalLoanPaid.toFixed(2)} readOnly />
         </div>
       </div>
     </>
@@ -324,16 +334,16 @@ const chartOptions: ChartOptions<"bar"> = {
 
 const LoanChart = ({ data }: { data: Data }) => {
   const chartData = {
-    labels: data.payments.map((p) => p.month),
+    labels: data.monthlyData.map((p) => p.month),
     datasets: [
       {
         label: "Dobanda",
-        data: data.payments.map((p) => p.loanInterest),
+        data: data.monthlyData.map((p) => p.loanInterest),
         backgroundColor: "rgba(255, 99, 132, 0.5)",
       },
       {
         label: "Principal",
-        data: data.payments.map((p) => p.loanPrincipal),
+        data: data.monthlyData.map((p) => p.loanPrincipal),
         backgroundColor: "rgba(53, 162, 235, 0.5)",
       },
     ],
@@ -379,7 +389,7 @@ const Table = ({ data }: { data: Data }) => {
           </tr>
         </thead>
         <tbody>
-          {data.payments.map(
+          {data.monthlyData.map(
             ({
               month,
               loanPrincipal,
