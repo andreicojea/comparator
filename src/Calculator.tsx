@@ -13,6 +13,7 @@ import {
   Tooltip,
   Legend,
   ChartOptions,
+  ChartData,
 } from "chart.js";
 import { Bar } from "react-chartjs-2";
 
@@ -392,6 +393,52 @@ const ConfigForm = ({ config, setConfig, data }: ConfigFormParams) => {
   );
 };
 
+const InvestChart = ({ data, config }: { data: Data; config: Config }) => {
+  const chartOptions = useMemo<ChartOptions<"bar">>(() => {
+    return {
+      responsive: true,
+      scales: {
+        x: {
+          stacked: true,
+          max: config.loanDuration,
+        },
+        y: {
+          stacked: true,
+        },
+      },
+      datasets: {
+        bar: {
+          barPercentage: 1,
+          categoryPercentage: 1,
+        },
+      },
+      aspectRatio: 9 / 6,
+      animation: false,
+    };
+  }, [config.loanDuration]);
+
+  const chartData: ChartData<"bar", number[], number> = {
+    labels: data.monthlyData.map((p) => p.month),
+    datasets: [
+      {
+        label: "Investitie",
+        data: data.monthlyData.map((p) => p.investNewTotal),
+        backgroundColor: (context) => {
+          return data.monthlyData[context.dataIndex].loanInterest == 0
+            ? "rgba(255,158,64, 0.5)"
+            : "rgba(76, 192, 192, 0.5)";
+        },
+      },
+    ],
+  };
+
+  return (
+    <div className="chart-container">
+      <Bar options={chartOptions} data={chartData} />
+    </div>
+  );
+};
+
 const LoanChart = ({ data, config }: { data: Data; config: Config }) => {
   const chartOptions = useMemo<ChartOptions<"bar">>(() => {
     return {
@@ -503,7 +550,10 @@ export const Calculator = () => {
         setConfig={setRawConfig}
         data={data}
       ></ConfigForm>
-      <LoanChart config={config} data={data}></LoanChart>
+      <div className="charts-row">
+        <LoanChart config={config} data={data}></LoanChart>
+        <InvestChart config={config} data={data}></InvestChart>
+      </div>
       <Table data={data}></Table>
     </>
   );

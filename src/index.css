@@ -68,7 +68,7 @@ input {
 }
 
 .chart-container {
-  width: 560px;
+  width: 461px;
   position: relative;
   margin: 20px 0;
 }
@@ -93,4 +93,9 @@ input {
   color: #333;
   border-color: #333;
   background: #eee;
+}
+
+.charts-row {
+  display: flex;
+  gap: 20px;
 }
