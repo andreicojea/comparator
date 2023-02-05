@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import sum from "lodash/sum";
 import sumBy from "lodash/sumBy";
 import mapValues from "lodash/mapValues";
+import { abbreviateNumber } from "js-abbreviation-number";
 
 import {
   Chart as ChartJS,
@@ -404,6 +405,11 @@ const InvestChart = ({ data, config }: { data: Data; config: Config }) => {
         },
         y: {
           stacked: true,
+          ticks: {
+            callback: (value) => {
+              return abbreviateNumber(Number(value)).toUpperCase();
+            },
+          },
         },
       },
       datasets: {
@@ -450,6 +456,11 @@ const LoanChart = ({ data, config }: { data: Data; config: Config }) => {
         },
         y: {
           stacked: true,
+          ticks: {
+            callback: (value) => {
+              return abbreviateNumber(Number(value)).toUpperCase();
+            },
+          },
         },
       },
       datasets: {
