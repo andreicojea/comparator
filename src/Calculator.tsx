@@ -147,7 +147,7 @@ function getInvestMax(config: Config) {
     config.loanTotal
   );
   for (let month = 1; month <= config.measureDuration; month++) {
-    const loan = month < config.loanDuration ? monthlyLoan : 0;
+    const loan = month <= config.loanDuration ? monthlyLoan : 0;
     val = val + interest * val + config.monthlyAvailable - loan;
   }
   return val;
