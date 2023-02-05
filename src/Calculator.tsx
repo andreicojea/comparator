@@ -1,5 +1,5 @@
-import { fv, pmt, ppmt } from "financial";
-import { useMemo, useState } from "react";
+import { pmt, ppmt } from "financial";
+import { useState } from "react";
 import sum from "lodash/sum";
 import sumBy from "lodash/sumBy";
 import mapValues from "lodash/mapValues";
@@ -147,7 +147,8 @@ function getInvestMax(config: Config) {
     config.loanTotal
   );
   for (let month = 1; month <= config.measureDuration; month++) {
-    val = val + interest * val + config.monthlyAvailable - monthlyLoan;
+    const loan = month < config.loanDuration ? monthlyLoan : 0;
+    val = val + interest * val + config.monthlyAvailable - loan;
   }
   return val;
 }
@@ -394,35 +395,32 @@ const ConfigForm = ({ config, setConfig, data }: ConfigFormParams) => {
   );
 };
 
-const InvestChart = ({ data, config }: { data: Data; config: Config }) => {
-  const chartOptions = useMemo<ChartOptions<"bar">>(() => {
-    return {
-      responsive: true,
-      scales: {
-        x: {
-          stacked: true,
-          max: config.loanDuration,
-        },
-        y: {
-          stacked: true,
-          ticks: {
-            callback: (value) => {
-              return abbreviateNumber(Number(value)).toUpperCase();
-            },
-          },
+const chartOptions: ChartOptions<"bar"> = {
+  responsive: true,
+  scales: {
+    x: {
+      stacked: true,
+    },
+    y: {
+      stacked: true,
+      ticks: {
+        callback: (value) => {
+          return abbreviateNumber(Number(value)).toUpperCase();
         },
       },
-      datasets: {
-        bar: {
-          barPercentage: 1,
-          categoryPercentage: 1,
-        },
-      },
-      aspectRatio: 9 / 6,
-      animation: false,
-    };
-  }, [config.loanDuration]);
+    },
+  },
+  datasets: {
+    bar: {
+      barPercentage: 1,
+      categoryPercentage: 1,
+    },
+  },
+  aspectRatio: 9 / 6,
+  animation: false,
+};
 
+const InvestChart = ({ data, config }: { data: Data; config: Config }) => {
   const chartData: ChartData<"bar", number[], number> = {
     labels: data.monthlyData.map((p) => p.month),
     datasets: [
@@ -446,34 +444,6 @@ const InvestChart = ({ data, config }: { data: Data; config: Config }) => {
 };
 
 const LoanChart = ({ data, config }: { data: Data; config: Config }) => {
-  const chartOptions = useMemo<ChartOptions<"bar">>(() => {
-    return {
-      responsive: true,
-      scales: {
-        x: {
-          stacked: true,
-          max: config.loanDuration,
-        },
-        y: {
-          stacked: true,
-          ticks: {
-            callback: (value) => {
-              return abbreviateNumber(Number(value)).toUpperCase();
-            },
-          },
-        },
-      },
-      datasets: {
-        bar: {
-          barPercentage: 1,
-          categoryPercentage: 1,
-        },
-      },
-      aspectRatio: 9 / 6,
-      animation: false,
-    };
-  }, [config.loanDuration]);
-
   const chartData = {
     labels: data.monthlyData.map((p) => p.month),
     datasets: [
